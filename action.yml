@@ -1,18 +1,68 @@
 name: "gha-comment-pull-request"
-description: "Add comments to pull request. It could also append text to description."
+description: "Add comments to pull request. It can also append text to the PR description."
 inputs:
   pull-request-number:
-    description: "Pull request number. This is required if not running in a pull_request event"
+    description: "Pull request number. Required if not running in a pull_request event."
     required: false
   description-message:
-    description: "Append message to pull request description"
+    description: "Append message to pull request description."
     required: false
   comment-message:
-    description: "Add comment to pull request"
+    description: "Add a comment to the pull request."
     required: false
   delete-previous-comment:
-    description: "Delete previous comment"
+    description: "Delete previous comments from this action before adding a new one."
     required: false
 runs:
-  using: "node12"
-  main: "./index.js"
+  using: composite
+  steps:
+    - name: Delete previous comments
+      if: ${{ inputs.delete-previous-comment != '' }}
+      shell: bash
+      run: |
+        PR_NUMBER="${{ inputs.pull-request-number || github.event.pull_request.number }}"
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No pull request number available, skipping."
+          exit 0
+        fi
+        gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+          | jq -r '.[] | select((.body // "") | test("<!-- Replace -->")) | .id' \
+          | while read -r comment_id; do
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id"
+              echo "Deleted comment $comment_id."
+            done
+        echo "Deleted previous comments successfully."
+
+    - name: Add comment
+      if: ${{ inputs.comment-message != '' }}
+      shell: bash
+      env:
+        COMMENT_MESSAGE: ${{ inputs.comment-message }}
+      run: |
+        PR_NUMBER="${{ inputs.pull-request-number || github.event.pull_request.number }}"
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No pull request number available, skipping."
+          exit 0
+        fi
+        printf '\n<!-- Replace -->\n%s\n<!-- Replace -->\n' "$COMMENT_MESSAGE" \
+          | jq -Rs '{"body": .}' \
+          | gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --input -
+        echo "Added new comment to pull request successfully."
+
+    - name: Update PR description
+      if: ${{ inputs.description-message != '' }}
+      shell: bash
+      env:
+        DESC_MESSAGE: ${{ inputs.description-message }}
+      run: |
+        PR_NUMBER="${{ inputs.pull-request-number || github.event.pull_request.number }}"
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No pull request number available, skipping."
+          exit 0
+        fi
+        CURRENT_BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.body // ""')
+        CLEANED=$(printf '%s' "$CURRENT_BODY" | perl -0pe 's/<!-- Replace -->.*?<!-- Replace -->//s')
+        printf '%s\n\n<!-- Replace -->\n%s\n<!-- Replace -->\n' "$CLEANED" "$DESC_MESSAGE" \
+          | jq -Rs '{"body": .}' \
+          | gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --input -
+        echo "Updated pull request description successfully."
