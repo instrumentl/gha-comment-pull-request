@@ -2,8 +2,10 @@
   "name": "gha-comment-pull-request",
   "version": "1.0.2",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
+    "build": "ncc build index.js -o dist --minify",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,5 +14,8 @@
   "dependencies": {
     "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.4"
   }
 }

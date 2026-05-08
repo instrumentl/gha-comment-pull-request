@@ -1,5 +1,5 @@
-const github = require("@actions/github");
-const core = require("@actions/core");
+import * as github from "@actions/github";
+import * as core from "@actions/core";
 
 function getInputs() {
   const pullRequestNumber = core.getInput("pull-request-number");
