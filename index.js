@@ -55,7 +55,7 @@ async function run() {
 
     if (descriptionMessage) {
       const descriptionWithPlaceholder = placeholderWrap(descriptionMessage)
-      const currentPullRequest = await octokit.pulls.get({
+      const currentPullRequest = await octokit.rest.pulls.get({
         owner,
         repo,
         pull_number,
@@ -64,7 +64,7 @@ async function run() {
         currentPullRequest.data.body,
         ''
       ).concat(`\n${descriptionWithPlaceholder}`)
-      await octokit.pulls.update({
+      await octokit.rest.pulls.update({
         owner,
         repo,
         pull_number,
@@ -75,7 +75,7 @@ async function run() {
     }
 
     if (deletePreviousComment) {
-      const comments = await octokit.issues.listComments({
+      const comments = await octokit.rest.issues.listComments({
         owner,
         repo,
         issue_number: pull_number,
@@ -83,7 +83,7 @@ async function run() {
       const commentsToDelete =
         comments.data.filter(c => c.body.match(/(<!-- Replace -->)/))
       await Promise.all(
-        commentsToDelete.map(c => octokit.issues.deleteComment({
+        commentsToDelete.map(c => octokit.rest.issues.deleteComment({
           owner,
           repo,
           comment_id: c.id,
@@ -96,7 +96,7 @@ async function run() {
 
       const body = commentWithPlaceholder
 
-      await octokit.issues.createComment({
+      await octokit.rest.issues.createComment({
         owner,
         repo,
         issue_number: pull_number,
