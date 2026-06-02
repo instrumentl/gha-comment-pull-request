@@ -1,11 +1,11 @@
-const github = require("@actions/github");
-const core = require("@actions/core");
+import { context, getOctokit } from "@actions/github";
+import { getInput, setFailed } from "@actions/core";
 
 function getInputs() {
-  const pullRequestNumber = core.getInput("pull-request-number");
-  const descriptionMessage = core.getInput("description-message");
-  const commentMessage = core.getInput("comment-message");
-  const deletePreviousComment = core.getInput("delete-previous-comment");
+  const pullRequestNumber = getInput("pull-request-number");
+  const descriptionMessage = getInput("description-message");
+  const commentMessage = getInput("comment-message");
+  const deletePreviousComment = getInput("delete-previous-comment");
   const token = process.env.GITHUB_TOKEN;
 
   return {
@@ -26,9 +26,9 @@ async function run() {
       deletePreviousComment,
       token,
     } = getInputs();
-    const { pull_request } = github.context.payload;
-    const { owner, repo } = github.context.repo;
-    const octokit = github.getOctokit(token);
+    const { pull_request } = context.payload;
+    const { owner, repo } = context.repo;
+    const octokit = getOctokit(token);
     if (!pull_request && !pullRequestNumber) {
       console.log('Not a pull_request event or pull-request-number informed. Ignoring action.')
       return;
@@ -106,7 +106,7 @@ async function run() {
     }
   } catch (error) {
     console.log('Error => ', error);
-    core.setFailed(error.message);
+    setFailed(error.message);
   }
 }
 
